@@ -19,7 +19,7 @@
   "scripts": {
     "clean": "rimraf dist/",
     "compile": "tsc",
-    "prepublish": "yarn clean && yarn compile",
+    "prepare": "yarn clean && yarn compile",
     "dev": "tsc --watch",
     "prettier": "prettier --check src"
   },
