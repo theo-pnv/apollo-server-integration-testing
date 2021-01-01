@@ -1,10 +1,41 @@
 // @flow
 
 import { convertNodeHttpToRequest, runHttpQuery } from 'apollo-server-core';
-import { ApolloServer } from 'apollo-server-express';
-import express from 'express';
+import { ApolloServer } from 'apollo-server-koa';
+import Koa from 'koa';
 import { DocumentNode, print } from 'graphql';
 import httpMocks, { RequestOptions, ResponseOptions } from 'node-mocks-http';
+
+export type ApolloServerIntegrationTestClient = {
+  query: TestQuery;
+  mutate: TestQuery;
+  setOptions: TestSetOptions;
+};
+interface MockContext<RequestBody = undefined> extends Koa.Context {
+  request: Koa.Context['request'] & {
+    body?: RequestBody;
+  };
+}
+
+const koaMockContext = <
+  State = Koa.DefaultState,
+  Context = MockContext,
+  RequestBody = undefined
+>(
+  app: Koa,
+  reqOptions: RequestOptions,
+  resOptions: ResponseOptions,
+  requestBody?: RequestBody
+) => {
+  const req = mockRequest(reqOptions);
+  const res = mockResponse(resOptions);
+  console.error('before');
+  const context = app.createContext(req, res) as MockContext<RequestBody> &
+    Koa.ParameterizedContext<State, Context>;
+  res.statusCode = 404;
+  context.request.body = requestBody;
+  return context;
+};
 
 const mockRequest = (options: RequestOptions = {}) =>
   httpMocks.createRequest({
@@ -20,7 +51,7 @@ export type Options<T extends object> = { variables?: T };
 
 export type TestClientConfig = {
   // The ApolloServer instance that will be used for handling the queries you run in your tests.
-  // Must be an instance of the ApolloServer class from `apollo-server-express` (or a compatible subclass).
+  // Must be an instance of the ApolloServer class from `apollo-server-koa` (or a compatible subclass).
   apolloServer: ApolloServer;
   // Extends the mocked Request object with additional keys.
   // Useful when your apolloServer `context` option is a callback that operates on the passed in `req` key,
@@ -72,8 +103,8 @@ export function createTestClient({
   apolloServer,
   extendMockRequest = {},
   extendMockResponse = {},
-}: TestClientConfig) {
-  const app = express();
+}: TestClientConfig): ApolloServerIntegrationTestClient {
+  const app = new Koa();
   apolloServer.applyMiddleware({ app });
 
   let mockRequestOptions = extendMockRequest;
@@ -103,15 +134,10 @@ export function createTestClient({
     operation: StringOrAst,
     { variables }: Options<V> = {}
   ) => {
-    const req = mockRequest(mockRequestOptions);
-    const res = mockResponse(mockResponseOptions);
+    const ctx = koaMockContext(app, mockRequestOptions, mockResponseOptions);
+    const graphQLOptions = await apolloServer.createGraphQLServerOptions(ctx);
 
-    const graphQLOptions = await apolloServer.createGraphQLServerOptions(
-      req,
-      res
-    );
-
-    const { graphqlResponse } = await runHttpQuery([req, res], {
+    const { graphqlResponse } = await runHttpQuery([ctx.req, ctx.res], {
       method: 'POST',
       options: graphQLOptions,
       query: {
@@ -119,7 +145,7 @@ export function createTestClient({
         query: typeof operation === 'string' ? operation : print(operation),
         variables,
       },
-      request: convertNodeHttpToRequest(req),
+      request: convertNodeHttpToRequest(ctx.req),
     });
 
     return JSON.parse(graphqlResponse) as T;
