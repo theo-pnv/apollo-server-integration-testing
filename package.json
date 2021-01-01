@@ -1,11 +1,11 @@
 {
-  "name": "apollo-server-integration-testing",
-  "version": "2.3.0",
-  "description": "Test helper for writing apollo-server integration tests",
+  "name": "apollo-server-integration-testing-koa",
+  "version": "1.0.0",
+  "description": "Test helper for writing apollo-server integration tests using Koa",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "repository": "https://github.com/zapier/apollo-server-integration-testing.git",
-  "author": "Vitor Balocco <vitor.balocco@zapier.com>",
+  "repository": "https://github.com/theo-pnv/apollo-server-integration-testing-koa",
+  "author": "Theo Penavaire <hey@theopnv.com>",
   "keywords": [
     "GraphQL",
     "Apollo",
