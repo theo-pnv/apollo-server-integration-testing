@@ -5,10 +5,33 @@ import { ApolloServer } from 'apollo-server-koa';
 import Koa from 'koa';
 import { DocumentNode, print } from 'graphql';
 import httpMocks, { RequestOptions, ResponseOptions } from 'node-mocks-http';
+import { GraphQLResponse as GraphQLResponseType } from 'apollo-server-types';
+
+export type GraphQLResponse<TData> = Omit<GraphQLResponseType, 'data'> & {
+  data?: TData;
+};
+
+type Query<TVariables = Record<string, any>> = {
+  query: StringOrAst;
+  mutation?: undefined;
+  variables?: TVariables;
+  operationName?: string;
+};
+
+type Mutation<TVariables = Record<string, any>> = {
+  mutation: StringOrAst;
+  query?: undefined;
+  variables?: TVariables;
+  operationName?: string;
+};
 
 export type ApolloServerIntegrationTestClient = {
-  query: TestQuery;
-  mutate: TestQuery;
+  query<TData = any, TVariables = Record<string, any>>(
+    query: Query<TVariables>
+  ): Promise<GraphQLResponse<TData>>;
+  mutate<TData = any, TVariables = Record<string, any>>(
+    mutation: Mutation<TVariables>
+  ): Promise<GraphQLResponse<TData>>;
   setOptions: TestSetOptions;
 };
 interface MockContext<RequestBody = undefined> extends Koa.Context {
@@ -46,7 +69,12 @@ const mockResponse = (options: ResponseOptions = {}) =>
   httpMocks.createResponse(options);
 
 export type StringOrAst = string | DocumentNode;
-export type Options<T extends object> = { variables?: T };
+export type Options<T> = { variables?: T };
+
+export type Response = <TData, TVariables>(
+  { query, mutation, ...args }: Query | Mutation,
+  { variables }?: Options<TVariables>
+) => Promise<TData>;
 
 export type TestClientConfig = {
   // The ApolloServer instance that will be used for handling the queries you run in your tests.
@@ -65,11 +93,6 @@ export type TestClientConfig = {
   // See https://www.npmjs.com/package/node-mocks-http#createresponse for all the default values that are included.
   extendMockResponse?: ResponseOptions;
 };
-
-export type TestQuery = <T extends object = {}, V extends object = {}>(
-  operation: StringOrAst,
-  { variables }?: Options<V>
-) => Promise<T>;
 
 export type TestSetOptions = (options: {
   request?: RequestOptions;
@@ -129,12 +152,19 @@ export function createTestClient({
     }
   };
 
-  const test: TestQuery = async <T extends object = {}, V extends object = {}>(
-    operation: StringOrAst,
-    { variables }: Options<V> = {}
+  const test: Response = async <TData, TVariables>(
+    { query, mutation, ...args }: Query | Mutation,
+    { variables }: Options<TVariables> = {}
   ) => {
     const ctx = koaMockContext(app, mockRequestOptions, mockResponseOptions);
     const graphQLOptions = await apolloServer.createGraphQLServerOptions(ctx);
+    const operation = query || mutation;
+
+    if (!operation || (query && mutation)) {
+      throw new Error(
+        'Either `query` or `mutation` must be passed, but not both.'
+      );
+    }
 
     const { graphqlResponse } = await runHttpQuery([ctx.req, ctx.res], {
       method: 'POST',
@@ -147,7 +177,7 @@ export function createTestClient({
       request: convertNodeHttpToRequest(ctx.req),
     });
 
-    return JSON.parse(graphqlResponse) as T;
+    return JSON.parse(graphqlResponse) as TData;
   };
 
   return {
