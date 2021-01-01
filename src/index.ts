@@ -29,7 +29,6 @@ const koaMockContext = <
 ) => {
   const req = mockRequest(reqOptions);
   const res = mockResponse(resOptions);
-  console.error('before');
   const context = app.createContext(req, res) as MockContext<RequestBody> &
     Koa.ParameterizedContext<State, Context>;
   res.statusCode = 404;
