@@ -17,7 +17,7 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "clean": "rm -r dist/",
+    "clean": "rimraf dist/",
     "compile": "tsc",
     "prepublish": "yarn clean && yarn compile",
     "dev": "tsc --watch",
@@ -33,6 +33,7 @@
     "husky": "^4.2.5",
     "lint-staged": "^10.2.11",
     "prettier": "^2.1.2",
+    "rimraf": "^3.0.2",
     "typescript": "^3.7.3"
   },
   "peerDependencies": {
