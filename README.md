@@ -7,7 +7,7 @@ _Warning: The API was slightly changed compared to the original package, to incl
 This package exports an utility function for writing apollo-server integration tests:
 
 ```
-import { createTestClient } from 'apollo-server-integration-testing';
+import { createTestClient } from 'apollo-server-integration-testing-koa';
 ```
 
 ## Usage
@@ -17,7 +17,7 @@ This function takes in an apollo server instance and returns a function that you
 Example usage:
 
 ```js
-import { createTestClient } from 'apollo-server-integration-testing';
+import { createTestClient } from 'apollo-server-integration-testing-koa';
 import { createApolloServer } from './myServerCreationCode';
 
 const apolloServer = await createApolloServer();
