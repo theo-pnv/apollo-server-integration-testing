@@ -2,6 +2,8 @@
 
 _This package is a fork of https://github.com/zapier/apollo-server-integration-testing. It is a tentative to add Koa support, as the original package only supports Express._
 
+_Warning: The API was slightly changed compared to the original package, to include stronger typings on the query and mutate methods._
+
 This package exports an utility function for writing apollo-server integration tests:
 
 ```
@@ -23,37 +25,28 @@ const { query, mutate } = createTestClient({
   apolloServer,
 });
 
-const result = await query(`{ currentUser { id } }`);
-
-expect(result).toEqual({
-  data: {
-    currentUser: {
-      id: '1',
-    },
-  },
-});
-
-const UPDATE_USER = `
-  mutation UpdateUser($id: ID!, $email: String!) {
-    updateUser(id: $id, email: $email) {
-      user {
+const FIND_USER = `
+  query FindUser($id: String) {
+    findUser(id: $id) {
+      __typename
+      ... on User {
+        id
         email
       }
     }
   }
 `;
 
-const mutationResult = await mutate(UPDATE_USER, {
-  variables: { id: 1, email: 'nancy@foo.co' },
-});
-
-expect(mutationResult).toEqual({
-  data: {
-    updateUser: {
-      email: 'nancy@foo.co',
-    },
+const {
+  data: { findUser },
+} = await options.testClient.query({
+  query: FIND_USER,
+  variables: {
+    id: 42,
   },
 });
+
+expect(findUser.email).to.be.equal('nancy@foo.co');
 ```
 
 This allows you to test all the logic of your apollo server, including any logic inside of the `context` option that you can pass to the `ApolloServer` constructor.

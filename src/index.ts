@@ -108,18 +108,6 @@ export type TestSetOptions = (options: {
 // const query = createTestClient({
 //   apolloServer,
 // });
-//
-// const result = await query(
-//   `{ currentUser { id } }`
-// )
-//
-// expect(result).toEqual({
-//   data: {
-//     currentUser: {
-//       id: '1'
-//     }
-//   }
-// });
 // ```
 export function createTestClient({
   apolloServer,
@@ -152,15 +140,15 @@ export function createTestClient({
     }
   };
 
-  const test: Response = async <TData, TVariables>(
-    { query, mutation, ...args }: Query | Mutation,
-    { variables }: Options<TVariables> = {}
-  ) => {
+  const test: Response = async <TData>(operation: Query | Mutation) => {
     const ctx = koaMockContext(app, mockRequestOptions, mockResponseOptions);
     const graphQLOptions = await apolloServer.createGraphQLServerOptions(ctx);
-    const operation = query || mutation;
+    const query = operation?.query;
+    const mutation = operation?.mutation;
+    const computedOperation = query || mutation;
+    const variables = operation.variables;
 
-    if (!operation || (query && mutation)) {
+    if (!computedOperation || (query && mutation)) {
       throw new Error(
         'Either `query` or `mutation` must be passed, but not both.'
       );
@@ -171,7 +159,10 @@ export function createTestClient({
       options: graphQLOptions,
       query: {
         // operation can be a string or an AST, but `runHttpQuery` only accepts a string
-        query: typeof operation === 'string' ? operation : print(operation),
+        query:
+          typeof computedOperation === 'string'
+            ? computedOperation
+            : print(computedOperation),
         variables,
       },
       request: convertNodeHttpToRequest(ctx.req),
